@@ -1,0 +1,6 @@
+*.bck
+*.old
+*.swp
+*.pyc
+bck/
+old/

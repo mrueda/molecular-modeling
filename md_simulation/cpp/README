@@ -1,0 +1,2 @@
+g++ -std=c++11 -O2 -o md_simulation_h20 md_simulation_h20.cpp
+./md_simulation_h20 > simulation_output.txt
