@@ -12,20 +12,20 @@ const double PI = 3.14159265358979323846;
 // Boltzmann constant in kcal/mol/K
 const double KB = 0.001987;
 
-// Simulation Parameters
-std::string integration_method = "verlet"; // Choose "verlet" or "leapfrog"
-double dt = 0.002;                           // Time step (fs)
-int steps = 1000000;                           // Number of steps
-double epsilon_LJ = 0.1;                     // Lennard-Jones depth (kcal/mol)
-double sigma_LJ = 3.0;                       // Lennard-Jones sigma (Å)
-double k_angle = 55.0;                       // Angle stiffness (kcal/mol/rad^2)
-double theta_eq = 104.5 * PI / 180.0;        // Equilibrium angle in radians
-double r_eq_bond = 0.96;                     // Equilibrium bond length (Å)
-double k_bond = 450.0;                       // Bond stiffness (kcal/mol/Å^2)
-double temperature = 300.0;                  // Target temperature (K)
-double tolerance = 1e-6;                     // Tolerance for SHAKE
-int max_iterations = 100;                    // Max iterations for SHAKE
-double offset_distance = 10.0;               // Distance between molecules
+// Simulation Parameters (matching Perl)
+std::string integration_method = "verlet";    // Choose "verlet" or "leapfrog"
+double dt = 0.002;                            // Time step (fs)
+int steps = 1000;                             // Number of steps (match Perl: 1,000 steps)
+double epsilon_LJ = 0.1;                      // Lennard-Jones depth (kcal/mol)
+double sigma_LJ = 3.0;                        // Lennard-Jones sigma (Å)
+double k_angle = 55.0;                        // Angle stiffness (kcal/mol/rad^2)
+double theta_eq = 104.5 * PI / 180.0;         // Equilibrium angle in radians
+double r_eq_bond = 0.96;                      // Equilibrium bond length (Å)
+double k_bond = 450.0;                        // Bond stiffness (kcal/mol/Å^2)
+double temperature = 3000.0;                  // Target temperature (K) (Perl code uses 3000 K)
+double tolerance = 1e-6;                      // Tolerance for SHAKE
+int max_iterations = 100;                     // Max iterations for SHAKE
+double offset_distance = 10.0;                // Distance between molecules
 
 // Random number generator for Gaussian distribution
 std::mt19937 rng(12345); // Initialize Mersenne Twister with a fixed seed
@@ -34,12 +34,6 @@ std::normal_distribution<double> gaussian_dist(0.0, 1.0);
 // Helper Functions
 double rand_gaussian(double std_dev) {
     return gaussian_dist(rng) * std_dev;
-}
-
-double sum(const std::vector<double>& v) {
-    double s = 0.0;
-    for (double val : v) s += val;
-    return s;
 }
 
 double dot_product(const std::vector<double>& v1, const std::vector<double>& v2) {
@@ -98,6 +92,9 @@ int main() {
     // Add molecules (e.g., water molecules)
     add_molecules(atoms, bonds, angles, 5); // Adding 5 water molecules
 
+    // Initialize velocities once before main loop
+    initialize_velocities(atoms, temperature);
+
     // Initialize forces array
     std::vector<std::vector<double>> forces(atoms.size(), std::vector<double>(3, 0.0));
 
@@ -108,13 +105,10 @@ int main() {
             std::fill(force.begin(), force.end(), 0.0);
         }
 
-        // Assign random initial velocities based on temperature every step
-        initialize_velocities(atoms, temperature);
-
         // Compute forces
         compute_bond_forces(atoms, bonds, forces);
         compute_angle_forces(atoms, angles, forces);
-        compute_LJ_forces(atoms, forces); // Non-bonded interactions across all atoms
+        compute_LJ_forces(atoms, forces);
 
         // Update positions and velocities based on the selected method
         if (integration_method == "verlet") {
@@ -126,6 +120,11 @@ int main() {
         else {
             std::cerr << "Unknown integration method: " << integration_method << std::endl;
             return EXIT_FAILURE;
+        }
+
+        // Apply the thermostat every 10 steps (like Perl code)
+        if (step % 10 == 0) {
+            apply_thermostat(atoms, temperature);
         }
 
         // Apply SHAKE constraints to fix bond lengths
@@ -144,7 +143,7 @@ int main() {
 
 void add_molecules(std::vector<Atom>& atoms, std::vector<Bond>& bonds, std::vector<Angle>& angles, int num_molecules) {
     for (int molecule_id = 0; molecule_id < num_molecules; ++molecule_id) {
-        int base_index = atoms.size(); // Starting index for this molecule
+        int base_index = (int)atoms.size(); // Starting index for this molecule
         double x_offset = molecule_id * offset_distance;
 
         // Add atoms (Oxygen, Hydrogen 1, Hydrogen 2)
@@ -174,10 +173,8 @@ void apply_thermostat(std::vector<Atom>& atoms, double target_temperature) {
     // Calculate current kinetic energy
     double total_kinetic_energy = 0.0;
     for (const auto& atom : atoms) {
-        double velocity_squared = sum(atom.vel) * sum(atom.vel); // Not accurate, should compute sum of squares
-        // Correcting the velocity_squared calculation
-        velocity_squared = 0.0;
-        for (const auto& v : atom.vel) {
+        double velocity_squared = 0.0;
+        for (auto v : atom.vel) {
             velocity_squared += v * v;
         }
         total_kinetic_energy += 0.5 * atom.mass * velocity_squared;
@@ -230,25 +227,21 @@ void compute_angle_forces(const std::vector<Atom>& atoms, const std::vector<Angl
         double r1_mag = std::sqrt(dot_product(r1, r1));
         double r2_mag = std::sqrt(dot_product(r2, r2));
 
-        if (r1_mag == 0 || r2_mag == 0) continue; // Avoid division by zero
+        if (r1_mag == 0 || r2_mag == 0) continue;
 
         double cos_theta = dot_product(r1, r2) / (r1_mag * r2_mag);
-        // Clamp cos_theta to [-1, 1] to avoid numerical issues
         cos_theta = std::max(-1.0, std::min(1.0, cos_theta));
         double theta = std::acos(cos_theta);
         double torque = -k_angle * (theta - theta_eq);
 
-        // Force calculations based on torque
-        // This is a simplified version and may not be physically accurate
-        // For accurate force calculations, a more detailed implementation is needed
-
-        // Placeholder for actual force implementation
-        // You can implement the correct force derivatives here
+        // Placeholder: actual angle forces not fully implemented
+        // Implementing angle forces would require distributing the torque
+        // onto the three atoms in a physically correct manner.
     }
 }
 
 void compute_LJ_forces(const std::vector<Atom>& atoms, std::vector<std::vector<double>>& forces) {
-    int num_atoms = atoms.size();
+    int num_atoms = (int)atoms.size();
     for (int i = 0; i < num_atoms - 1; ++i) {
         for (int j = i + 1; j < num_atoms; ++j) {
             std::vector<double> r(3);
@@ -256,8 +249,8 @@ void compute_LJ_forces(const std::vector<Atom>& atoms, std::vector<std::vector<d
                 r[dim] = atoms[j].pos[dim] - atoms[i].pos[dim];
             }
             double r_mag = std::sqrt(dot_product(r, r));
-            if (r_mag == 0) continue; // Avoid division by zero
-            double r6 = pow(sigma_LJ / r_mag, 6);
+            if (r_mag == 0) continue;
+            double r6 = std::pow(sigma_LJ / r_mag, 6);
             double f_mag = 24 * epsilon_LJ * r6 * (2 * r6 - 1) / (r_mag * r_mag);
             for (int dim = 0; dim < 3; ++dim) {
                 double f = f_mag * r[dim] / r_mag;
@@ -309,16 +302,16 @@ void verlet_update(std::vector<Atom>& atoms, const std::vector<std::vector<doubl
 }
 
 void leapfrog_update(std::vector<Atom>& atoms, const std::vector<std::vector<double>>& forces, double dt) {
+    // Note: A full leapfrog step typically requires forces at half steps.
+    // This is a simplified version. The Perl code is similar (also simplified).
     for (size_t i = 0; i < atoms.size(); ++i) {
         double mass = atoms[i].mass;
         for (int dim = 0; dim < 3; ++dim) {
-            // Update velocities by half step
+            // Half step velocity update
             atoms[i].vel[dim] += 0.5 * forces[i][dim] * dt / mass;
-            // Update positions
+            // Position update
             atoms[i].pos[dim] += atoms[i].vel[dim] * dt;
-            // Update velocities by another half step (forces would need to be recalculated)
-            // Here we assume forces are updated elsewhere
-            // For a complete leapfrog implementation, forces should be updated before the second half step
+            // Half step velocity update again would be done after recomputing forces
         }
     }
 }

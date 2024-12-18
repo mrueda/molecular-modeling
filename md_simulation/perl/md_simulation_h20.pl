@@ -8,14 +8,14 @@ my $integration_method = 'verlet';    # Change to 'verlet' for Verlet integratio
 
 # Simulation parameters
 my $dt          = 0.002;               # Time step (fs)
-my $steps       = 10_000;              # Number of steps
+my $steps       = 1_000;               # Number of steps
 my $epsilon_LJ  = 0.1;                 # Lennard-Jones depth (kcal/mol)
 my $sigma_LJ    = 3.0;                 # Lennard-Jones sigma (Å)
 my $k_angle     = 55.0;                # Angle stiffness (kcal/mol/rad^2)
 my $theta_eq    = 104.5 * pi / 180;    # Equilibrium angle in radians
 my $r_eq_bond   = 0.96;                # Equilibrium bond length (Å)
 my $k_bond      = 450.0;               # Bond stiffness (kcal/mol/Å^2)
-my $temperature = 300;                 # Target temperature (K)
+my $temperature = 3000;                 # Target temperature (K)
 my $kb          = 0.001987;            # Boltzmann constant (kcal/mol/K)
 
 # Set a fixed seed
@@ -31,16 +31,16 @@ my @angles;
 add_molecules( \@atoms, \@bonds, \@angles, 5 );
 
 # Forces array
-my @forces = map { [ 0, 0, 0 ] } @atoms;
+my @forces = ();
+
+# Assign random initial velocities based on temperature
+initialize_velocities( \@atoms, $temperature );
 
 # Main MD loop
 for my $step ( 0 .. $steps - 1 ) {
 
     # Reset forces
     @forces = map { [ 0, 0, 0 ] } @atoms;
-
-    # Assign random initial velocities based on temperature
-    initialize_velocities( \@atoms, $temperature );
 
     # Compute forces
     compute_bond_forces( \@atoms, \@bonds, \@forces );
@@ -56,6 +56,11 @@ for my $step ( 0 .. $steps - 1 ) {
     }
     else {
         die "Unknown integration method: $integration_method\n";
+    }
+
+    # Apply the thermostat every 10 steps
+    if ($step % 10 == 0) {
+        apply_thermostat(\@atoms, $temperature);
     }
 
     # Apply SHAKE constraints to fix bond lengths
@@ -205,6 +210,31 @@ sub verlet_update {
               0.5 * $forces->[$i][$dim] * $dt**2 / $mass;
             $atoms->[$i]->{vel}[$dim] +=
               0.5 * $forces->[$i][$dim] * $dt / $mass;
+        }
+    }
+}
+
+# Subroutine: Leapfrog update
+sub leapfrog_update {
+    my ($atoms, $forces, $dt) = @_;
+
+    for my $i (0 .. $#$atoms) {
+        my $atom = $atoms->[$i];
+        my $mass = $atom->{mass};
+
+        # Update velocities (half step)
+        for my $dim (0..2) {
+            $atom->{vel}[$dim] += 0.5 * $forces->[$i][$dim] * $dt / $mass;
+        }
+
+        # Update positions (full step)
+        for my $dim (0..2) {
+            $atom->{pos}[$dim] += $atom->{vel}[$dim] * $dt;
+        }
+
+        # Update velocities (another half step)
+        for my $dim (0..2) {
+            $atom->{vel}[$dim] += 0.5 * $forces->[$i][$dim] * $dt / $mass;
         }
     }
 }
