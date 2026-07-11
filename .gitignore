@@ -1,6 +1,12 @@
 *.bck
 *.old
 *.swp
-*.pyc
+*.py[cod]
+__pycache__/
 bck/
 old/
+git_history.txt
+md_simulation/cpp/md_simulation_h20
+md_simulation/*/simulation_output.txt
+docking/cpp/peptide_docking
+docking/*/docking_trajectory.xyz

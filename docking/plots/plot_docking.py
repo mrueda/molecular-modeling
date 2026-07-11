@@ -2,13 +2,11 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import matplotlib.animation as animation
+import argparse
 
 # ============================
 # Configuration Parameters
 # ============================
-
-# Path to the XYZ trajectory file
-TRAJECTORY_FILE = 'docking_trajectory.xyz'
 
 # Number of atoms per peptide
 ATOMS_PEPTIDE1 = 5  # e.g., 5 Alanine residues
@@ -127,8 +125,12 @@ def update_plot(num, frames, scat_pep1, scat_pep2, ax):
 # ============================
 
 def main():
+    parser = argparse.ArgumentParser(description='Animate a peptide docking XYZ trajectory.')
+    parser.add_argument('trajectory_file', help='Path to docking_trajectory.xyz')
+    args = parser.parse_args()
+
     # Read the trajectory frames
-    frames = read_xyz(TRAJECTORY_FILE)
+    frames = read_xyz(args.trajectory_file)
     if not frames:
         print("No frames found in the trajectory file.")
         return
@@ -170,4 +172,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

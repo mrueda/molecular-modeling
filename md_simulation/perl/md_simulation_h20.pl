@@ -148,11 +148,29 @@ sub compute_angle_forces {
           map { $atoms->[$k]->{pos}[$_] - $atoms->[$j]->{pos}[$_] } ( 0 .. 2 );
         my $r1_mag    = sqrt( sum( map { $_**2 } @r1 ) );
         my $r2_mag    = sqrt( sum( map { $_**2 } @r2 ) );
-        my $cos_theta = dot_product( \@r1, \@r2 ) / ( $r1_mag * $r2_mag );
-        my $theta     = Math::Complex::acos($cos_theta);
-        my $torque    = -$k_angle * ( $theta - $theta_eq );
+        next if $r1_mag == 0 || $r2_mag == 0;
 
-        # Force calculations here (not fully implemented in this snippet)
+        my $cos_theta = dot_product( \@r1, \@r2 ) / ( $r1_mag * $r2_mag );
+        $cos_theta = -1.0 if $cos_theta < -1.0;
+        $cos_theta = 1.0 if $cos_theta > 1.0;
+        my $theta     = acos($cos_theta);
+        my $sin_theta = sqrt( 1.0 - $cos_theta * $cos_theta );
+        next if $sin_theta < 1e-8;
+
+        my $dE_dtheta = $k_angle * ( $theta - $theta_eq );
+        my $coeff_i   = $dE_dtheta / ( $r1_mag * $sin_theta );
+        my $coeff_k   = $dE_dtheta / ( $r2_mag * $sin_theta );
+
+        for my $dim ( 0 .. 2 ) {
+            my $e1      = $r1[$dim] / $r1_mag;
+            my $e2      = $r2[$dim] / $r2_mag;
+            my $force_i = $coeff_i * ( $e2 - $cos_theta * $e1 );
+            my $force_k = $coeff_k * ( $e1 - $cos_theta * $e2 );
+
+            $forces->[$i][$dim] += $force_i;
+            $forces->[$k][$dim] += $force_k;
+            $forces->[$j][$dim] -= $force_i + $force_k;
+        }
     }
 }
 

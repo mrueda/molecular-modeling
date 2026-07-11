@@ -232,11 +232,23 @@ void compute_angle_forces(const std::vector<Atom>& atoms, const std::vector<Angl
         double cos_theta = dot_product(r1, r2) / (r1_mag * r2_mag);
         cos_theta = std::max(-1.0, std::min(1.0, cos_theta));
         double theta = std::acos(cos_theta);
-        double torque = -k_angle * (theta - theta_eq);
+        double sin_theta = std::sqrt(std::max(1.0 - cos_theta * cos_theta, 0.0));
+        if (sin_theta < 1e-8) continue;
 
-        // Placeholder: actual angle forces not fully implemented
-        // Implementing angle forces would require distributing the torque
-        // onto the three atoms in a physically correct manner.
+        double dE_dtheta = k_angle * (theta - theta_eq);
+        double coeff_i = dE_dtheta / (r1_mag * sin_theta);
+        double coeff_k = dE_dtheta / (r2_mag * sin_theta);
+
+        for (int dim = 0; dim < 3; ++dim) {
+            double e1 = r1[dim] / r1_mag;
+            double e2 = r2[dim] / r2_mag;
+            double force_i = coeff_i * (e2 - cos_theta * e1);
+            double force_k = coeff_k * (e1 - cos_theta * e2);
+
+            forces[i][dim] += force_i;
+            forces[k][dim] += force_k;
+            forces[j][dim] -= force_i + force_k;
+        }
     }
 }
 
@@ -326,4 +338,3 @@ void write_simulation_data(int step, const std::vector<Atom>& atoms) {
                   << x << " " << y << " " << z << "\n";
     }
 }
-
