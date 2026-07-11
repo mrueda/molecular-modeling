@@ -25,6 +25,7 @@ make check
 ```
 
 `make check` compiles the C++ examples with warnings enabled, checks Perl syntax, and byte-compiles the Python plotting scripts.
+It also runs a small regression suite that checks output shape, finite MD coordinates, water bond lengths, docking best score, and trajectory frame counts.
 
 ## Run Examples
 

@@ -23,6 +23,7 @@ check:
 	$(PYTHON) -m py_compile md_simulation/plots/plot_3d.py docking/plots/plot_docking.py
 	$(CXX) $(CXXFLAGS) -o /tmp/md_simulation_h20_check md_simulation/cpp/md_simulation_h20.cpp
 	$(CXX) $(CXXFLAGS) -o /tmp/peptide_docking_check docking/cpp/peptide_docking.cpp
+	$(PYTHON) -m unittest discover -s tests
 
 run-md-cpp: md_simulation/cpp/md_simulation_h20
 	./md_simulation/cpp/md_simulation_h20 > md_simulation/cpp/simulation_output.txt
@@ -45,3 +46,4 @@ clean:
 	$(RM) docking/perl/docking_trajectory.xyz
 	$(RM) -r md_simulation/plots/__pycache__
 	$(RM) -r docking/plots/__pycache__
+	$(RM) -r tests/__pycache__
